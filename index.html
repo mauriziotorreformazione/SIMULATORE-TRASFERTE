@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulatore Tempi di Trasferta - Esami di Stato</title>
+    <!-- Caricamento di Tailwind CSS per una grafica moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Regole per la stampa: nasconde i bottoni quando si genera il PDF */
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: white; padding: 0; }
+            .print-shadow-none { box-shadow: none; border: 1px solid #e5e7eb; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
+
+    <div class="max-w-3xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-lg print-shadow-none">
+        
+        <div class="text-center mb-8">
+            <h1 class="text-2xl md:text-3xl font-bold text-blue-700">Simulatore Tempi di Trasferta</h1>
+            <h2 class="text-lg text-slate-500">Commissioni Esami di Stato (Quadro B)</h2>
+            <p class="text-sm mt-2 text-slate-400">Rif. D.I. 24 maggio 2007 e Nota prot. 7054/2007</p>
+        </div>
+
+        <!-- Form di Inserimento -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 no-print">
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Comune di Partenza (Residenza/Servizio)</label>
+                <input type="text" id="partenza" placeholder="Es. Roma" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Comune Sede d'Esame</label>
+                <input type="text" id="arrivo" placeholder="Es. Viterbo" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="md:col-span-2">
+                <button onclick="simulaCalcolo()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200">
+                    Calcola Tempo Stimato con Mezzi Pubblici
+                </button>
+            </div>
+        </div>
+
+        <!-- Sezione Risultati e Override Manuale -->
+        <div id="risultati" class="hidden bg-blue-50 border border-blue-100 rounded-lg p-6 mb-8">
+            <h3 class="text-xl font-bold text-blue-800 mb-4 border-b border-blue-200 pb-2">Dati Calcolati</h3>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-semibold text-slate-700 mb-1">Tempo netto di viaggio (Minuti)</label>
+                <div class="flex items-center gap-4">
+                    <input type="number" id="minuti" class="w-32 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-lg font-bold text-center" oninput="aggiornaFascia()">
+                    <span class="text-sm text-slate-500 no-print">*Puoi correggere questo valore manualmente se in possesso di orari cartacei differenti.</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-6 text-center">
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <span class="block text-sm text-slate-500 uppercase tracking-wide">Fascia Spettante</span>
+                    <span id="fascia" class="text-3xl font-black text-slate-800">--</span>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border">
+                    <span class="block text-sm text-slate-500 uppercase tracking-wide">Indennità Lorda</span>
+                    <span id="indennita" class="text-3xl font-black text-green-600">€ 0,00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Disclaimer Legale -->
+        <div class="text-xs text-justify text-slate-400 mt-8 p-4 bg-slate-50 rounded border border-slate-200">
+            <strong>NOTA INFORMATIVA E LIBERATORIA:</strong> Il presente simulatore fornisce un calcolo indicativo dei tempi di percorrenza. Ai sensi della normativa vigente, non devono essere conteggiati i tempi relativi all'uso di mezzi urbani o ai tempi di attesa/coincidenza. L'onere della verifica formale dell'effettivo orario del mezzo extraurbano più veloce in vigore all'inizio delle operazioni d'esame resta in capo al commissario dichiarante e alla segreteria scolastica. Lo sviluppatore dello strumento declina ogni responsabilità per eventuali difformità.
+        </div>
+
+        <!-- Pulsanti Finali -->
+        <div class="mt-8 text-center no-print hidden" id="azioni-finali">
+            <button onclick="window.print()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-8 rounded-lg transition duration-200 flex items-center justify-center mx-auto gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                Stampa / Salva in PDF
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // Funzione per simulare l'attesa di un'API (per ora genera un tempo casuale o basato sulla lunghezza)
+        function simulaCalcolo() {
+            const partenza = document.getElementById('partenza').value;
+            const arrivo = document.getElementById('arrivo').value;
+
+            if(!partenza || !arrivo) {
+                alert("Inserisci sia il comune di partenza che quello di arrivo.");
+                return;
+            }
+
+            // Simulazione di una risposta API (qui in futuro inseriremo il vero collegamento Open Data)
+            // Per test, impostiamo un valore di partenza fittizio di 45 minuti
+            document.getElementById('minuti').value = 45; 
+            
+            document.getElementById('risultati').classList.remove('hidden');
+            document.getElementById('azioni-finali').classList.remove('hidden');
+            aggiornaFascia();
+        }
+
+        // Motore normativo: calcola fascia e importo in base ai minuti
+        function aggiornaFascia() {
+            const minuti = parseInt(document.getElementById('minuti').value) || 0;
+            let fascia = "";
+            let indennita = "";
+
+            if (minuti <= 30) {
+                fascia = "Fascia A";
+                indennita = "€ 171,00";
+            } else if (minuti >= 31 && minuti <= 60) {
+                fascia = "Fascia B";
+                indennita = "€ 568,00";
+            } else if (minuti >= 61 && minuti <= 100) {
+                fascia = "Fascia C";
+                indennita = "€ 908,00";
+            } else {
+                fascia = "Fascia D";
+                indennita = "€ 2.270,00";
+            }
+
+            document.getElementById('fascia').innerText = fascia;
+            document.getElementById('indennita').innerText = indennita;
+        }
+    </script>
+</body>
+</html>
